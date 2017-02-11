@@ -18,15 +18,19 @@ It scrapes the web page with Beautiful Soup 4. It uses transmission-rpc to commu
 Configuration looks like this:
 
 ```YAML
-pb_device:
-pb_token:
+pushservice: 'pushbullet' or 'pushjet'
+pushbullet:
+	device:
+	token:
+pushjet:
+	secret:
 series:
         - subber: 'HorribleSubs'
           name: 'Urara Meirochou'
           quality: '720p'
 ```
 
-pb_device and pb_token are respectively the device identifier and Authorization Token used for the PushBullet API. series is a list, so you can put as many series as you want to download. 
+pushbullet.device and pushbullet.token are respectively the device identifier and Authorization Token used for the PushBullet API. pushjet.secret is the service secret for pushjet. series is a list, so you can put as many series as you want to download. 
 
 You need to create a SQLite database file called anime.db beforehand. Use this query to create the episodes table:
 ```SQL

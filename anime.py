@@ -1,3 +1,4 @@
+# Library imports
 from urllib.request import urlopen, urlretrieve, Request
 from bs4 import BeautifulSoup
 from yaml import load
@@ -9,38 +10,30 @@ import sched
 from time import time, sleep
 import json
 
+# Local Imports
+from pushbullet import PushBullet
+from pushjet import PushJet
+
 # YAML Config
 config = load(open('config.yaml', 'r'))
 
-# Variables for Pushbullet
-device = config.get('pb_device')
-access_token = config.get('pb_token')
+if config.get('pushservice') == 'pushbullet':
+    pusher = PushBullet(config.get('pushbullet'))
+elif config.get('pushservice') == 'pushjet':
+    pusher = PushJet(config.get('pushjet'))
 
-# Connect to animu database
+#Connect to animu database
 conn = sqlite3.connect('anime.db')
 cursor = conn.cursor()
 
 #Useful Regex for extracting information from shows
-exp = re.compile('\[(\w+)\] ([\w|\s]+) - (\d+) \[(\d+)p\]')
+exp = re.compile('\[(\w+)\] ([\w|\s]+) - (\d+(v\d)?) \[(\d+)p\]')
 
 # RPC Client for Transmission BitTorrent
 tc = transmissionrpc.Client('localhost', port=9091, user='transmission', password='transmission')
 
 # Scheduler to execute the tasks at regular intervals
 scheduler = sched.scheduler(time, sleep)
-
-# Pushan update through PushBullet
-def pushUpdate(message):
-    data = {"device_iden": device, "type": "note", "title": "Anime Snake", "body": message}
-    jsondataasbytes = json.dumps(data).encode('utf-8')
-    
-    req = Request('https://api.pushbullet.com/v2/pushes')
-    req.add_header('Content-Type', 'application/json; charset=utf-8')
-    req.add_header('Access-Token', access_token)
-    req.add_header('Content-Length', len(jsondataasbytes))
-
-    urlopen(req, jsondataasbytes)
-    return
 
 # Get Torrent for selected shows
 def getEpisodes(show):
@@ -52,8 +45,9 @@ def getEpisodes(show):
         name = row.find("td", class_="tlistname").a.string
         url = "http:" + row.find("td", class_="tlistdownload").a.get("href")
         mtch = exp.match(name)
-        episodeList.append(dict(number = mtch.group(3), url = url))
-    
+        if mtch != None:
+            episodeList.append(dict(number = mtch.group(3), url = url))
+   
     return episodeList
 
 # Add a torrent to the transmission daemon
@@ -78,7 +72,7 @@ def updateShows():
                     if(torrent.percentDone == 1.0):
                         # Episode finished downloading, send PushBullet
                         print("{show} - {num} finished downloading".format(show= show.get("name"), num = ep.get("number")))
-                        pushUpdate("{show} - Episode {num} has finished downloading".format(show = show.get("name"), num = ep.get("number")))
+                        pusher.push("{show} - Episode {num} has finished downloading".format(show = show.get("name"), num = ep.get("number")))
                         cursor.execute("UPDATE episodes SET complete=1 WHERE show=? AND number=?", (show.get("name"), ep.get("number")))
     
     # Commit changes to database 

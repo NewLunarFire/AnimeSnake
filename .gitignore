@@ -1,3 +1,4 @@
 anime.db
 config.yaml
 *.torrent
+__pycache__
